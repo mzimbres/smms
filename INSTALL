@@ -1,0 +1,30 @@
+To build this project you will need 
+
+   1. libfmt.
+   2. boost >= 1.71.
+   3. libsodium.
+
+On debian systems
+
+   $ sudo apt-get install libfmt-dev
+   $ sudo apt-get install libsodium-dev
+
+SMMS makes direct use of only three boost packages
+  
+  1. Asio
+  2. Beast
+  3. Program Options
+
+There is no need to build boost whole, for example
+
+   $ ./bootstrap.sh --with-libraries=program_options,system --prefix=/opt/boost_1_71_0/
+   $ ./b2
+   $ sudo b2 install
+
+The Makefile assumes boost is installed on
+
+   boost_inc_dir = /opt/boost_1_71_0/include
+   boost_lib_dir = /opt/boost_1_71_0/lib
+
+Change that if needed.
+

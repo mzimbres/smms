@@ -1,0 +1,29 @@
+Source: smms
+Section: httpd
+Priority: optional
+Maintainer: Marcelo Zimbres Silva <mzimbres@gmail.com>
+Build-Depends: debhelper (>=11~), debhelper-compat (=12), libboost-program-options-dev, libfmt-dev
+Standards-Version: 4.5.0
+Homepage: https://github.com/mzimbres/smms
+Vcs-Browser: https://github.com/mzimbres/smms
+Vcs-Git: https://github.com/mzimbres/smms.git
+Rules-Requires-Root: binary-targets
+
+Package: smms
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Replaces: smms (<< 1.0.0-1),
+Description: Simple Multimedia Server
+ A very simple single threaded Http server used to post and get
+ files from.
+ .
+ This package contains only the server.
+
+Package: smms-keygen
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Replaces: smms-keygen (<< 1.0.0-1),
+Description: Sign URLs for the SMMS server
+ Program and libraries to sign smms urls for smms.
+ .
+ This package contains the smms key generator.

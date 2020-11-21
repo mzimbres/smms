@@ -1,0 +1,13 @@
+[Unit]
+Description=Http multimedia server.
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/smms /etc/smms/smms.conf
+ExecStop=/bin/kill -s INT $MAINPID
+Restart=always
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
+
