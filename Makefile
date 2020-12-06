@@ -29,7 +29,7 @@ LDFLAGS += -lsodium
 LDFLAGS += -lssl
 LDFLAGS += -lcrypto
 
-CPPFLAGS += -std=c++17
+CPPFLAGS += -std=c++20
 CPPFLAGS += -I$./src -I$(boost_dir)/include
 CPPFLAGS += $(pkg-config --cflags libsodium)
 CPPFLAGS += $(CXXFLAGS)

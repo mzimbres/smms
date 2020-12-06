@@ -18,17 +18,8 @@
 
 #pragma once
 
-#include <iterator>
-
 namespace smms
 {
-
-template <class C>
-auto ssize(C const& c)
-{
-   auto const size = std::size(c);
-   return static_cast<int>(size);
-}
 
 void create_dir(const char *dir);
 

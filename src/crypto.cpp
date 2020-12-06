@@ -54,7 +54,7 @@ std::string hash_to_string(hash_type const& hash)
 {
   std::string output;
   output.reserve(2 * std::size(hash));
-  for (auto i = 0; i < smms::ssize(hash); ++i) {
+  for (auto i = 0; i < std::ssize(hash); ++i) {
     output.push_back(high_to_char(hash[i]));
     output.push_back(low_to_char(hash[i]));
   }
@@ -122,8 +122,8 @@ path_info make_path_info(beast::string_view target)
    path_info pinfo;
 
    std::array<char, 4> delimiters {{'/', '/', pwd_gen::sep, '.'}};
-   auto j = ssize(delimiters) - 1;
-   auto k = ssize(target);
+   auto j = std::ssize(delimiters) - 1;
+   auto k = std::ssize(target);
    for (auto i = k - 1; i >= 0; --i) {
       if (target[i] == delimiters[j]) {
          pinfo[j] = target.substr(i + 1, k - i - 1);
