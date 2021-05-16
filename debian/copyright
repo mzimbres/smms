@@ -1,7 +1,7 @@
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Contact: Marcelo Zimbres Silva <mzimbres@gmail.com>
 Upstream-Name: smms
-Source: https://github.com/mzimbres/tsvtree
+Source: https://github.com/mzimbres/smms
 
 Files:     *
 Copyright: Copyright 2020  Marcelo Zimbres Silva <mzimbres@gmail.com>
