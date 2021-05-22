@@ -28,6 +28,7 @@ LDFLAGS += -lfmt
 LDFLAGS += -lsodium
 LDFLAGS += -lssl
 LDFLAGS += -lcrypto
+LDFLAGS += -ljpeg
 
 CPPFLAGS += -std=c++20
 CPPFLAGS += -I$./src -I$(boost_dir)/include

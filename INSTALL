@@ -8,12 +8,14 @@ On debian systems
 
    $ sudo apt-get install libfmt-dev
    $ sudo apt-get install libsodium-dev
+   $ sudo apt-get install libjpeg-dev
 
 SMMS makes direct use of only three boost packages
   
   1. Asio
   2. Beast
   3. Program Options
+  3. GIL
 
 There is no need to build boost whole, for example
 

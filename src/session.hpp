@@ -24,6 +24,7 @@
 #include <vector>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <boost/filesystem.hpp>
 
 #include "utils.hpp"
@@ -80,20 +81,20 @@ template<class Derived>
 class session {
 private:
    using req_body_parser_type = http::request_parser<http::file_body>;
-   using resp_body_type = http::response<http::file_body>;
+   using resp_body_type = http::response<http::string_body>;
 
 protected:
    beast::flat_buffer buffer_ {8192};
 
 private:
-   // Read header firstknow in advance the file name.
+   // Read header first to know in advance the file name.
    http::request_parser<http::empty_body> header_parser_;
 
    // std::unique_ptr here required as beast does not offer
    // correct move semantics for req_body_parser_type.
    std::unique_ptr<req_body_parser_type> body_parser_;
    http::response<http::dynamic_body> resp_;
-   std::unique_ptr<resp_body_type> file_body_resp_;
+   std::unique_ptr<resp_body_type> string_body_resp_;
    
    config const& cfg_;
 
@@ -149,15 +150,15 @@ private:
          resp_.set(http::field::content_length,
                    beast::to_static_string(std::size(resp_.body())));
          write_response();
-       return;
-    }
+         return;
+      }
 
-    auto self = derived().shared_from_this();
-    auto f = [self](auto ec, auto n)
-       { self->on_read_post_body(ec, n); };
+      auto self = derived().shared_from_this();
+      auto f = [self](auto ec, auto n)
+         { self->on_read_post_body(ec, n); };
 
-    http::async_read(derived().stream(), buffer_, *body_parser_, f);
- }
+      http::async_read(derived().stream(), buffer_, *body_parser_, f);
+   }
 
    void get_handler(beast::string_view raw_target)
    {
@@ -173,10 +174,13 @@ private:
       auto final_path = path;
       auto gzip = false;
       if (has_mime(path, cfg_.gzip_mimes)) {
-        // We must to server this mime type with pre-compressed files. That
-        // means we have to add a ".gz" to the path but only if the client
-        // accepts that encoding. If it doesn't we do not change the filename.
-        auto const match = header_parser_.get().find(http::field::accept_encoding);
+	// We must be able to server this mime type with
+	// pre-compressed files. That means we have to add a ".gz" to
+	// the path but only if the client accepts that encoding. If
+	// it doesn't we do not change the filename.
+        auto const match =
+	   header_parser_.get().find(http::field::accept_encoding);
+
         if (match != std::end(header_parser_.get())) {
 	   if (match->value().find("gzip") != std::string::npos) {
              // check whether gzip version exists.
@@ -188,14 +192,14 @@ private:
         }
       }
 
-      log::write(log::level::debug, "Get target path: {0}", final_path);
+      log::write(
+	 log::level::debug,
+	 "Get target (final): {0}",
+	 final_path);
 
-      beast::error_code ec;
-      http::file_body::value_type body;
-      body.open(final_path.data(), beast::file_mode::scan, ec);
-
-      if (ec) {
-	 log::write(log::level::debug, "get_handler: {0}", ec.message());
+      std::ifstream ifs{final_path};
+      if (!ifs) {
+	 log::write(log::level::debug, "get_handler: Can't open file.");
 	 resp_.result(http::status::not_found);
 	 resp_.set(http::field::content_type, mime_type(".txt"));
 	 beast::ostream(resp_.body()) << "File not found.\r\n";
@@ -205,22 +209,27 @@ private:
 	 return;
       }
 
-      file_body_resp_ = std::make_unique<resp_body_type>(
+      using iter_type = std::istreambuf_iterator<char>;
+      std::string body {iter_type {ifs}, {}};
+
+      string_body_resp_ = std::make_unique<resp_body_type>(
 	 std::piecewise_construct,
-	 std::make_tuple(std::move(body)),
+	 std::make_tuple(std::string{}),
 	 std::make_tuple(http::status::ok, header_parser_.get().version()));
 
-      file_body_resp_->set(http::field::server, cfg_.server_name);
-      file_body_resp_->set(http::field::content_type, mime_type(path));
-      file_body_resp_->content_length(std::size(body));
-      file_body_resp_->keep_alive(header_parser_.keep_alive());
-      file_body_resp_->set(http::field::access_control_allow_origin,
+      auto const body_size = std::size(body);
+      string_body_resp_->body() = std::move(body);
+      string_body_resp_->set(http::field::server, cfg_.server_name);
+      string_body_resp_->set(http::field::content_type, mime_type(path));
+      string_body_resp_->content_length(body_size);
+      string_body_resp_->keep_alive(header_parser_.keep_alive());
+      string_body_resp_->set(http::field::access_control_allow_origin,
 			   cfg_.allow_origin);
       if (gzip)
-        file_body_resp_->set(http::field::content_encoding, "gzip");
+        string_body_resp_->set(http::field::content_encoding, "gzip");
 
       if (cfg_.set_cache_control())
-        file_body_resp_->set(
+        string_body_resp_->set(
            http::field::cache_control,
            cfg_.get_cache_control(path));
 
@@ -228,7 +237,7 @@ private:
       auto f = [self](auto ec, auto)
 	 { self->derived().do_eof(); };
 
-      http::async_write(derived().stream(), *file_body_resp_, f);
+      http::async_write(derived().stream(), *string_body_resp_, f);
    }
 
    void on_read_post_body(boost::system::error_code ec, std::size_t n)
@@ -273,8 +282,13 @@ private:
    void on_read_header(boost::system::error_code ec, std::size_t n)
    {
       if (!log::ignore(log::level::debug)) { // Optimization.
-	 for (auto const& field : header_parser_.get())
-	    log::write(log::level::debug, "   {0}: {1}", field.name(), field.value());
+	 for (auto const& field : header_parser_.get()) {
+	    log::write(
+	       log::level::debug,
+	       "   {0}: {1}",
+	       field.name_string(),
+	       field.value());
+	 }
       }
 
       auto const target = header_parser_.get().target();
@@ -311,8 +325,7 @@ private:
          resp_.set(http::field::content_length,
                    beast::to_static_string(std::size(resp_.body())));
 	 write_response();
-      }
-      break;
+      } break;
       }
    }
 
