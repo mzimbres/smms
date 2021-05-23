@@ -79,93 +79,92 @@ struct config {
 
 template<class Derived>
 class session {
-private:
-   using req_body_parser_type = http::request_parser<http::file_body>;
-   using resp_body_type = http::response<http::string_body>;
-
 protected:
    beast::flat_buffer buffer_ {8192};
 
 private:
-   // Read header first to know in advance the file name.
-   http::request_parser<http::empty_body> header_parser_;
-
-   // std::unique_ptr here required as beast does not offer
-   // correct move semantics for req_body_parser_type.
-   std::unique_ptr<req_body_parser_type> body_parser_;
-   http::response<http::dynamic_body> resp_;
-   std::unique_ptr<resp_body_type> string_body_resp_;
+   http::request_parser<http::string_body> parser_;
+   http::response<http::string_body> response_;
    
    config const& cfg_;
 
-    Derived& derived()
-       { return static_cast<Derived&>(*this); }
+   Derived& derived()
+      { return static_cast<Derived&>(*this); }
 
    void post_handler(beast::string_view target)
    {
-      // Before posting we check if the digest and the rest of the target
-      // have been produced by the same key.
+      // Before posting we check if the digest and the rest of the
+      // target have been produced by the same key.
       std::string path;
       auto const pinfo = make_path_info(target);
       if (is_valid(pinfo, cfg_.key)) {
 	 path = cfg_.doc_root;
 	 path.append(target.data(), std::size(target));
-	 log::write(log::level::debug , "Post dir: {0}", path);
+	 log::write(log::level::debug , "post_handler: dir: {0}", path);
 	 auto full_dir = cfg_.doc_root + "/";
 	 full_dir.append(pinfo[0].data(), std::size(pinfo[0]));
-	 log::write(log::level::debug , "MMS dir: {0}", full_dir);
+	 log::write(log::level::debug , "post_handler: mms dir: {0}", full_dir);
 	 create_dir(full_dir.data());
       }
 
-      log::write(log::level::debug , "Post full dir: {0}", path);
+      log::write(
+	 log::level::debug,
+	 "post_handler: full dir: {0}",
+	 path);
 
       if (std::empty(path)) {
-	 resp_.result(http::status::bad_request);
-	 resp_.set(http::field::content_type, "text/plain");
-	 beast::ostream(resp_.body()) << "Invalid signature.\r\n";
-         resp_.set(http::field::content_length,
-                   beast::to_static_string(std::size(resp_.body())));
+	 response_.result(http::status::bad_request);
+	 response_.set(http::field::content_type, "text/plain");
+	 response_.body() = "Invalid signature.\r\n";
+         response_.set(http::field::content_length,
+                       beast::to_static_string(std::size(response_.body())));
 	 write_response();
 	 return;
       }
 
-      // The filename contains a valid signature, we can open the file
-      // and read the body to save the image.
+      log::write(
+	 log::level::debug,
+	 "post_handler: body size: {0}.",
+	 std::size(parser_.get().body()));
 
-      body_parser_ = std::make_unique< req_body_parser_type
-				    >(std::move(header_parser_));
+      std::ofstream ofs(path, std::ios::binary);
+      if (!ofs) {
+         log::write(
+	    log::level::info,
+	    "post_handler: Can't open file for writing.");
 
-      beast::error_code ec;
-      body_parser_->get()
-	 .body()
-	 .open(path.data(),
-	       beast::file_mode::write_new,
-	       ec);
-
-      if (ec) {
-         log::write(log::level::info , "post_handler: {0}", ec.message());
-         resp_.result(http::status::bad_request);
-         resp_.set(http::field::content_type, "text/plain");
-         beast::ostream(resp_.body()) << "Error\r\n";
-         resp_.set(http::field::content_length,
-                   beast::to_static_string(std::size(resp_.body())));
+         response_.result(http::status::bad_request);
+         response_.set(http::field::content_type, "text/plain");
+         response_.body() = "Error\r\n";
+         response_.set(http::field::content_length,
+                   beast::to_static_string(std::size(response_.body())));
          write_response();
          return;
       }
 
-      auto self = derived().shared_from_this();
-      auto f = [self](auto ec, auto n)
-         { self->on_read_post_body(ec, n); };
+      ofs << parser_.get().body();
 
-      http::async_read(derived().stream(), buffer_, *body_parser_, f);
+      response_.result(http::status::ok);
+      response_.set(http::field::server, cfg_.server_name);
+      response_.set(http::field::access_control_allow_origin,
+		cfg_.allow_origin);
+
+      response_.set(http::field::content_length,
+                beast::to_static_string(std::size(response_.body())));
+
+      write_response();
    }
 
    void get_handler(beast::string_view raw_target)
    {
-      log::write(log::level::debug, "Get target: {0}", raw_target);
+      log::write(
+	 log::level::debug,
+	 "get_handler: target: {0}",
+	 raw_target);
 
       auto const target = remove_queries(raw_target);
       assert(!std::empty(target));
+
       auto path = cfg_.doc_root;
       path.append(target.data(), std::size(target));
       if (std::size(target) == 1)
@@ -179,9 +178,9 @@ private:
 	// the path but only if the client accepts that encoding. If
 	// it doesn't we do not change the filename.
         auto const match =
-	   header_parser_.get().find(http::field::accept_encoding);
+	   parser_.get().find(http::field::accept_encoding);
 
-        if (match != std::end(header_parser_.get())) {
+        if (match != std::end(parser_.get())) {
 	   if (match->value().find("gzip") != std::string::npos) {
              // check whether gzip version exists.
              if (fs::exists(fs::path(final_path + ".gz"))) {
@@ -194,17 +193,17 @@ private:
 
       log::write(
 	 log::level::debug,
-	 "Get target (final): {0}",
+	 "get_handler: target (final): {0}",
 	 final_path);
 
       std::ifstream ifs{final_path};
       if (!ifs) {
 	 log::write(log::level::debug, "get_handler: Can't open file.");
-	 resp_.result(http::status::not_found);
-	 resp_.set(http::field::content_type, mime_type(".txt"));
-	 beast::ostream(resp_.body()) << "File not found.\r\n";
-         resp_.set(http::field::content_length,
-                   beast::to_static_string(std::size(resp_.body())));
+	 response_.result(http::status::not_found);
+	 response_.set(http::field::content_type, mime_type(".txt"));
+	 response_.body() = "File not found.\r\n";
+         response_.set(http::field::content_length,
+                   beast::to_static_string(std::size(response_.body())));
 	 write_response();
 	 return;
       }
@@ -212,24 +211,19 @@ private:
       using iter_type = std::istreambuf_iterator<char>;
       std::string body {iter_type {ifs}, {}};
 
-      string_body_resp_ = std::make_unique<resp_body_type>(
-	 std::piecewise_construct,
-	 std::make_tuple(std::string{}),
-	 std::make_tuple(http::status::ok, header_parser_.get().version()));
-
       auto const body_size = std::size(body);
-      string_body_resp_->body() = std::move(body);
-      string_body_resp_->set(http::field::server, cfg_.server_name);
-      string_body_resp_->set(http::field::content_type, mime_type(path));
-      string_body_resp_->content_length(body_size);
-      string_body_resp_->keep_alive(header_parser_.keep_alive());
-      string_body_resp_->set(http::field::access_control_allow_origin,
-			   cfg_.allow_origin);
+      response_.body() = std::move(body);
+      response_.set(http::field::server, cfg_.server_name);
+      response_.set(http::field::content_type, mime_type(path));
+      response_.content_length(body_size);
+      response_.keep_alive(parser_.keep_alive());
+      response_.set(http::field::access_control_allow_origin,
+                    cfg_.allow_origin);
       if (gzip)
-        string_body_resp_->set(http::field::content_encoding, "gzip");
+        response_.set(http::field::content_encoding, "gzip");
 
       if (cfg_.set_cache_control())
-        string_body_resp_->set(
+        response_.set(
            http::field::cache_control,
            cfg_.get_cache_control(path));
 
@@ -237,52 +231,33 @@ private:
       auto f = [self](auto ec, auto)
 	 { self->derived().do_eof(); };
 
-      http::async_write(derived().stream(), *string_body_resp_, f);
-   }
-
-   void on_read_post_body(boost::system::error_code ec, std::size_t n)
-   {
-      log::write(log::level::debug, "Body size: {0}.", n);
-
-      if (ec) {
-	 // TODO: Use the correct code.
-	 resp_.result(http::status::bad_request);
-	 resp_.set(http::field::content_type, "text/plain");
-	 beast::ostream(resp_.body()) << "File not found\r\n";
-	 log::write( log::level::info
-		   , "on_read_post_body: {0}."
-		   , ec.message());
-      } else {
-	 resp_.result(http::status::ok);
-	 resp_.set(http::field::server, cfg_.server_name);
-	 resp_.set(http::field::access_control_allow_origin,
-		   cfg_.allow_origin);
-      }
-
-      resp_.set(http::field::content_length,
-                beast::to_static_string(std::size(resp_.body())));
-      write_response();
+      http::async_write(derived().stream(), response_, f);
    }
 
    void set_redirect(beast::string_view target)
    {
       log::write(log::level::debug,
-		 "Redirecting to {0}",
+		 "set_redirect: redirecting to {0}",
 		 cfg_.redirect_url);
 
-      resp_.result(http::status::moved_permanently);
+      response_.result(http::status::moved_permanently);
       std::string url = cfg_.redirect_url;
       url.append(target.data(), std::size(target));
-      resp_.set(http::field::location, url);
-      resp_.set(http::field::content_length, beast::to_static_string(0));
-      resp_.set(http::field::access_control_allow_origin,
+      response_.set(http::field::location, url);
+      response_.set(http::field::content_length, beast::to_static_string(0));
+      response_.set(http::field::access_control_allow_origin,
 			   cfg_.allow_origin);
    }
 
-   void on_read_header(boost::system::error_code ec, std::size_t n)
+   void on_read(boost::system::error_code ec, std::size_t n)
    {
+      log::write(
+	 log::level::debug,
+	 "on_read: number of bytes read {0}.",
+	 n);
+
       if (!log::ignore(log::level::debug)) { // Optimization.
-	 for (auto const& field : header_parser_.get()) {
+	 for (auto const& field : parser_.get()) {
 	    log::write(
 	       log::level::debug,
 	       "   {0}: {1}",
@@ -291,10 +266,20 @@ private:
 	 }
       }
 
-      auto const target = header_parser_.get().target();
-      auto const match = header_parser_.get().find(http::field::host);
+      if (ec) {
+	 response_.result(http::status::bad_request);
+	 response_.set(http::field::content_type, "text/plain");
+	 response_.body() = "Invalid body size.\r\n";
+         response_.set(http::field::content_length,
+                       beast::to_static_string(std::size(response_.body())));
+	 write_response();
+	 return;
+      }
+
+      auto const target = parser_.get().target();
+      auto const match = parser_.get().find(http::field::host);
       auto no_host_match = false;
-      if (match != std::end(header_parser_.get())) {
+      if (match != std::end(parser_.get())) {
 	 auto const v = match->value();
 	 auto const n =
 	    std::count(std::begin(cfg_.host_names),
@@ -312,20 +297,20 @@ private:
 	 return;
       }
 
-      resp_.version(header_parser_.get().version());
-      resp_.keep_alive(false);
+      response_.version(parser_.get().version());
+      response_.keep_alive(false);
 
-      switch (header_parser_.get().method()) {
-      case http::verb::post: post_handler(target); break;
-      case http::verb::get: get_handler(target); break;
-      default:
-      {
-	 resp_.result(http::status::bad_request);
-	 resp_.set(http::field::content_type, "text/plain");
-         resp_.set(http::field::content_length,
-                   beast::to_static_string(std::size(resp_.body())));
-	 write_response();
-      } break;
+      switch (parser_.get().method()) {
+	 case http::verb::post: post_handler(target); break;
+	 case http::verb::get: get_handler(target); break;
+	 default:
+	 {
+	    response_.result(http::status::bad_request);
+	    response_.set(http::field::content_type, "text/plain");
+	    response_.set(http::field::content_length,
+		      beast::to_static_string(std::size(response_.body())));
+	    write_response();
+	 } break;
       }
    }
 
@@ -335,7 +320,7 @@ private:
       auto f = [self](auto ec, auto)
 	 { self->derived().do_eof(); };
 
-      http::async_write(derived().stream(), resp_, f);
+      http::async_write(derived().stream(), response_, f);
    }
 
 public:
@@ -351,10 +336,10 @@ public:
 
       auto self = derived().shared_from_this();
       auto f = [self](auto ec, auto n)
-	 { self->on_read_header(ec, n); };
+	 { self->on_read(ec, n); };
 
-      header_parser_.body_limit(cfg_.body_limit);
-      http::async_read_header(derived().stream(), buffer_, header_parser_, f);
+      parser_.body_limit(cfg_.body_limit);
+      http::async_read(derived().stream(), buffer_, parser_, f);
    }
 };
 
