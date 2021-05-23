@@ -91,18 +91,40 @@ private:
    Derived& derived()
       { return static_cast<Derived&>(*this); }
 
-   void post_handler(beast::string_view target)
+   void post_handler(beast::string_view raw_target)
    {
+      std::string path;
+      auto const target_query = split_from_query(raw_target);
+      auto const target = target_query.first;
+      auto const query = target_query.second;
+      auto const queries = parse_query({query.data(), std::size(query)});
+
+      auto match =
+	 std::find(
+	    std::cbegin(queries),
+	    std::cend(queries),
+	    std::string{"hmac"});
+
+      std::string expected_hmac;
+      if (match != std::cend(queries))
+	 expected_hmac = *++match;
+
+      auto const digest =
+	 make_hex_digest({target.data(), std::size(target)}, cfg_.key);
+
       // Before posting we check if the digest and the rest of the
       // target have been produced by the same key.
-      std::string path;
-      auto const pinfo = make_path_info(target);
-      if (is_valid(pinfo, cfg_.key)) {
+      if (!std::empty(digest) && digest == expected_hmac) {
 	 path = cfg_.doc_root;
 	 path.append(target.data(), std::size(target));
+
 	 log::write(log::level::debug , "post_handler: dir: {0}", path);
-	 auto full_dir = cfg_.doc_root + "/";
-	 full_dir.append(pinfo[0].data(), std::size(pinfo[0]));
+
+	 std::string full_dir;
+	 full_dir += cfg_.doc_root;
+	 full_dir += "/";
+	 full_dir += parse_dir({target.data(), std::size(target)});
+
 	 log::write(log::level::debug , "post_handler: mms dir: {0}", full_dir);
 	 create_dir(full_dir.data());
       }
@@ -162,7 +184,8 @@ private:
 	 "get_handler: target: {0}",
 	 raw_target);
 
-      auto const target = remove_queries(raw_target);
+      auto const target_query = split_from_query(raw_target);
+      auto const target = target_query.first;
       assert(!std::empty(target));
 
       auto path = cfg_.doc_root;

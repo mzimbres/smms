@@ -45,6 +45,7 @@ exes += test
 exes += compress_test
 
 common_objs += crypto.o
+common_objs += utils.o
 
 smms_objs += acceptor.o
 smms_objs += logger.o

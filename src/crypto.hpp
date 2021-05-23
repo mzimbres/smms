@@ -22,6 +22,7 @@
 #include <random>
 
 #include "net.hpp"
+#include "utils.hpp"
 
 namespace smms
 {
@@ -48,46 +49,9 @@ public:
    std::string operator()(int size);
 };
 
-using path_info = std::array<beast::string_view, 4>;
-
-// Expects a target in the form
-//
-//    /x/x/xx/filename:digest.jpg
-//
-// where the extension is optional and returns an array in the form
-//
-// a[0] = x/x/xx
-// a[1] = filename
-// a[2] = digest
-// a[3] = jpg
-path_info make_path_info(beast::string_view target);
-
 // This function tests if the target the digest has been indeed
 // generated using the filename and the secret key shared only by
 // smms db and the smms mms.
-bool is_valid(path_info const& info, std::string const& key);
+bool is_valid(pathinfo_type const& info, std::string const& key);
 
-/* Parses a string in the form 
- *
- *   /hash/dir1/dir2/dir3/file.ext
- *
- * and returns a pair consisting of
- *
- *   1. hash
- *   2. /dir1/dir2/dir3/file.ext
- */
-std::pair<std::string, std::string>
-parse_hash(std::string const& target);
-
-/* Parses a string in the form
- *
- *   /dir1/dir2/dir3/file.ext
- *
- * and returns
- *    
- *   /prefix/dir1/dir2/dir3/
- */
-std::string read_dir(std::string const& s, std::string prefix);
-
-}
-
+} // smms

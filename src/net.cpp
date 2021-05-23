@@ -17,9 +17,7 @@
  */
 
 #include "net.hpp"
-
-#include <algorithm>
-
+#include "utils.hpp"
 #include "logger.hpp"
 
 namespace smms
@@ -92,24 +90,6 @@ bool load_ssl( ssl::context& ctx
    return true;
 }
 
-beast::string_view remove_queries(beast::string_view path)
-{
-  auto const pos = path.rfind("?");
-  if (pos == beast::string_view::npos)
-     return path;
-
-  return path.substr(0, pos);
-}
-
-beast::string_view make_extension(beast::string_view path)
-{
-  auto const pos = path.rfind(".");
-  if (pos == beast::string_view::npos)
-     return beast::string_view{};
-
-  return path.substr(pos);
-}
-
 beast::string_view mime_type(beast::string_view path)
 {
    using beast::iequals;
@@ -143,15 +123,14 @@ beast::string_view mime_type(beast::string_view path)
 
 bool has_mime(beast::string_view path, std::vector<std::string> const& mimes)
 {
-    using beast::iequals;
+   using beast::iequals;
 
-    auto const ext = make_extension(path);
+   auto const ext = make_extension(path);
 
-    auto f = [&](auto const& mime)
-      { return iequals(ext, mime); };
+   auto f = [&](auto const& mime)
+     { return iequals(ext, mime); };
 
-    return std::any_of(std::cbegin(mimes), std::cend(mimes), f);
+   return std::any_of(std::cbegin(mimes), std::cend(mimes), f);
 }
 
-}
-
+} // smms

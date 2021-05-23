@@ -117,30 +117,7 @@ void init_libsodium()
       throw std::runtime_error("Error: Cannot initialize libsodium.");
 }
 
-path_info make_path_info(beast::string_view target)
-{
-   path_info pinfo;
-
-   std::array<char, 4> delimiters {{'/', '/', pwd_gen::sep, '.'}};
-   auto j = std::ssize(delimiters) - 1;
-   auto k = std::ssize(target);
-   for (auto i = k - 1; i >= 0; --i) {
-      if (target[i] == delimiters[j]) {
-         pinfo[j] = target.substr(i + 1, k - i - 1);
-         k = i;
-         --j;
-      }
-
-      if (j == 0) {
-         pinfo[0] = target.substr(1, k - 1);
-         break;
-      }
-   }
-
-   return pinfo;
-}
-
-bool is_valid(path_info const& info, std::string const& key)
+bool is_valid(pathinfo_type const& info, std::string const& key)
 {
    std::string path = "/";
    path.append(info[0].data(), std::size(info[0]));
@@ -155,37 +132,4 @@ bool is_valid(path_info const& info, std::string const& key)
    return digest.compare(0, digest_size, info[2].data(), digest_size) == 0;
 }
 
-std::pair<std::string, std::string>
-parse_hash(std::string const& target)
-{
-   if (std::empty(target))
-      return {};
-
-   if (target.front() != '/')
-      return {};
-
-   auto const pos = target.find("/", 1);
-   if (pos == std::string::npos)
-      return {};
-
-   auto const a = target.substr(1, pos - 1);
-   auto const b = target.substr(pos);
-   return {a, b};
-}
-
-std::string read_dir(std::string const& s, std::string prefix)
-{
-   auto const pos = s.rfind('/');
-   if (pos == std::string::npos)
-      return {};
-
-   if (std::empty(prefix))
-       return s.substr(0, pos);
-
-   prefix += s.substr(0, pos);
-   return prefix;
-
-}
-
-}
-
+} // smms

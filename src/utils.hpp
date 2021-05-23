@@ -18,10 +18,44 @@
 
 #pragma once
 
+#include <vector>
+#include <string>
+
+#include "net.hpp"
+
 namespace smms
 {
 
+using pathinfo_type = std::array<beast::string_view, 4>;
+
 void create_dir(const char *dir);
 
-}
+std::vector<std::string>
+parse_query(std::string const& in);
 
+beast::string_view make_extension(beast::string_view path);
+
+// Splits the url into a target and query. For example
+//
+//    http://foo.bar/a/b/index.html?one=two
+//
+// Returns
+//
+// First: http://foo.bar/a/b/index.html
+// Second: one=two
+std::pair<beast::string_view, beast::string_view>
+split_from_query(beast::string_view path);
+
+/* Parses a http target in the form
+ *
+ *   /dir1/dir2/dir3/.../file.ext
+ *
+ * and returns the directory part
+ *    
+ *   /prefix/dir1/dir2/dir3/
+ *
+ * NOTE: The target is assumed to contain no queries.
+ */
+std::string parse_dir(std::string const& target);
+
+} // smms

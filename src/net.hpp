@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <utility>
 #include <iostream>
 
 #include <boost/asio.hpp>
@@ -46,10 +47,8 @@ bool load_ssl( ssl::context& ctx
              , std::string const& ssl_priv_key_file
              , std::string const& ssl_dh_file);
 
-beast::string_view make_extension(beast::string_view path);
-beast::string_view remove_queries(beast::string_view path);
 beast::string_view mime_type(beast::string_view path);
 bool has_mime(beast::string_view path, std::vector<std::string> const& mimes);
 
-}
+} // smms
 

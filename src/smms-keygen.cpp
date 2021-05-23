@@ -99,11 +99,14 @@ int main(int argc, char* argv[])
       }
 
       if (!std::empty(cfg.make_http_target)) {
-         std::string str = cfg.make_http_target + pwd_gen::sep;
-         if (std::empty(cfg.key))
+         std::string str = cfg.make_http_target;
+         if (std::empty(cfg.key)) {
+            str += "?hmac=";
             str += make_hex_digest(cfg.make_http_target);
-         else
+	 } else {
+            str += "?hmac=";
             str += make_hex_digest(cfg.make_http_target, cfg.key);
+	 }
 
          std::cout << str << std::endl;
          return 0;
