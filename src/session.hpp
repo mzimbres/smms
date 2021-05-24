@@ -23,9 +23,14 @@
 #include <array>
 #include <vector>
 #include <fstream>
+#include <sstream>
 #include <iostream>
 #include <iterator>
 #include <boost/filesystem.hpp>
+#include <boost/gil.hpp>
+#include <boost/gil/extension/io/jpeg.hpp>
+#include <boost/gil/extension/numeric/sampler.hpp>
+#include <boost/gil/extension/numeric/resample.hpp>
 
 #include "utils.hpp"
 #include "logger.hpp"
@@ -98,17 +103,8 @@ private:
       auto const target = target_query.first;
       auto const query = target_query.second;
       auto const queries = parse_query({query.data(), std::size(query)});
-
-      auto match =
-	 std::find(
-	    std::cbegin(queries),
-	    std::cend(queries),
-	    std::string{"hmac"});
-
-      std::string expected_hmac;
-      if (match != std::cend(queries))
-	 expected_hmac = *++match;
-
+      
+      auto const expected_hmac = get_field_value(queries, "hmac");
       auto const digest =
 	 make_hex_digest({target.data(), std::size(target)}, cfg_.key);
 
@@ -231,8 +227,34 @@ private:
 	 return;
       }
 
-      using iter_type = std::istreambuf_iterator<char>;
-      std::string body {iter_type {ifs}, {}};
+      std::string body;
+      auto const is_jpeg = make_extension(path) == ".jpeg";
+      auto const is_jpg = make_extension(path) == ".jpg";
+      if (is_jpeg || is_jpg) {
+	  namespace bg = boost::gil;
+	  bg::rgb8_image_t img;
+	  bg::read_image(ifs, img, bg::jpeg_tag{});
+
+	  auto const query = target_query.second;
+	  auto const queries = parse_query({query.data(), std::size(query)});
+	  auto const width = get_field_value(queries, "width");
+	  auto const height = get_field_value(queries, "height");
+
+	  // TODO: catch exceptions.
+	  // TODO: Limit the sizes.
+	  bg::rgb8_image_t square(std::stoi(width), std::stoi(height));
+	  bg::resize_view(
+	     bg::const_view(img),
+	     bg::view(square),
+	     bg::bilinear_sampler{});
+
+	  std::ostringstream oss;
+	  bg::write_view(oss, bg::const_view(square), bg::jpeg_tag{});
+	  body = oss.str();
+      } else {
+	 using iter_type = std::istreambuf_iterator<char>;
+	 body = std::string {iter_type {ifs}, {}};
+      }
 
       auto const body_size = std::size(body);
       response_.body() = std::move(body);

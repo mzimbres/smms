@@ -124,4 +124,22 @@ std::string parse_dir(std::string const& target)
    return target.substr(0, pos);
 }
 
+std::string
+get_field_value(
+   std::vector<std::string> const& queries,
+   std::string const& field)
+{
+   auto match =
+      std::find(
+	 std::cbegin(queries),
+	 std::cend(queries),
+	 field);
+
+   auto const end = std::cend(queries);
+   if (match != end && match != std::prev(end))
+      return *++match;
+
+   return {};
+}
+
 } // smms

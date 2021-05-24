@@ -58,4 +58,9 @@ split_from_query(beast::string_view path);
  */
 std::string parse_dir(std::string const& target);
 
+std::string
+get_field_value(
+   std::vector<std::string> const& queries,
+   std::string const& field);
+
 } // smms
