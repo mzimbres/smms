@@ -91,11 +91,13 @@ void query_test3()
    std::string q22 = "&";
    std::string q23 = "f&v";
    std::string q24 = "=&v";
+   std::string q25 = "a&b=v";
 
    check_query(q21, {}, "r21");
    check_query(q22, {}, "r22");
    check_query(q23, {}, "r23");
    check_query(q24, {}, "r24");
+   check_query(q25, {}, "r25");
 }
 
 void

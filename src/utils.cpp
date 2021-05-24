@@ -36,23 +36,23 @@ std::vector<std::string>
 parse_query(std::string const& in)
 {
    static char seps[2] = {'=', '&'};
-   static int idxs[2] = {1, 0};
 
    std::vector<std::string> ret;
 
    auto const size = std::ssize(in);
-   auto sep = 0;
-   auto last = -1;
+   auto a = 0;
+   auto b = 1;
+   auto last = 0;
    for (auto i = 0; i < size; ++i) {
-      if (in[i] == seps[sep]) {
-	 sep = idxs[sep];
-	 ++last;
+      if (in[i] == seps[b])
+	 return {};
+
+      if (in[i] == seps[a]) {
+	 std::swap(a, b);
 	 ret.push_back(in.substr(last, i - last));
-	 last = i;
+	 last = i + 1;
       }
    }
-
-   ++last;
 
    if (last < std::ssize(in))
       ret.push_back(in.substr(last));

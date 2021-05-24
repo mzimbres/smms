@@ -42,7 +42,6 @@ VPATH = ./src
 exes += smms
 exes += smms-keygen
 exes += test
-exes += compress_test
 
 common_objs += crypto.o
 common_objs += utils.o
@@ -72,9 +71,6 @@ smms: % : %.o $(smms_objs) $(common_objs)
 
 smms-keygen: % : %.o  $(common_objs)
 	$(CXX) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(ext_libs) -lfmt -lsodium
-
-compress_test: % : %.o
-	$(CXX) -o $@ $^ $(CPPFLAGS) -lz
 
 test: % : %.o  $(common_objs)
 	$(CXX) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) -lfmt -lsodium
