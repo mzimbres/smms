@@ -63,4 +63,11 @@ get_field_value(
    std::vector<std::string> const& queries,
    std::string const& field);
 
+enum class error_code
+{ ok = 0
+, invalid
+};
+
+int stoi_nothrow(std::string const& s, error_code& ec);
+
 } // smms

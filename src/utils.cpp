@@ -142,4 +142,14 @@ get_field_value(
    return {};
 }
 
+int stoi_nothrow(std::string const& s, error_code& ec)
+{
+   try {
+      return std::stoi(s);
+   } catch (...) {
+      ec = error_code::invalid;
+      return {};
+   }
+}
+
 } // smms

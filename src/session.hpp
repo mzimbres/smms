@@ -230,27 +230,53 @@ private:
       std::string body;
       auto const is_jpeg = make_extension(path) == ".jpeg";
       auto const is_jpg = make_extension(path) == ".jpg";
-      if (is_jpeg || is_jpg) {
-	  namespace bg = boost::gil;
-	  bg::rgb8_image_t img;
-	  bg::read_image(ifs, img, bg::jpeg_tag{});
-
-	  auto const query = target_query.second;
+      auto const query = target_query.second;
+      if ((is_jpeg || is_jpg) && !std::empty(query)) {
 	  auto const queries = parse_query({query.data(), std::size(query)});
-	  auto const width = get_field_value(queries, "width");
-	  auto const height = get_field_value(queries, "height");
+	  auto const width_str = get_field_value(queries, "width");
+	  auto const height_str = get_field_value(queries, "height");
 
-	  // TODO: catch exceptions.
-	  // TODO: Limit the sizes.
-	  bg::rgb8_image_t square(std::stoi(width), std::stoi(height));
-	  bg::resize_view(
-	     bg::const_view(img),
-	     bg::view(square),
-	     bg::bilinear_sampler{});
+	  auto wec = error_code::ok;
+	  auto const width = stoi_nothrow(width_str, wec);
 
-	  std::ostringstream oss;
-	  bg::write_view(oss, bg::const_view(square), bg::jpeg_tag{});
-	  body = oss.str();
+	  auto hec = error_code::ok;
+	  auto const height = stoi_nothrow(height_str, hec);
+
+	  if (wec == error_code::ok && hec == error_code::ok) {
+	     auto const ok_sizes_w = width <= 1000 && width > 0;
+	     auto const ok_sizes_h = height <= 1000 && height > 0;
+	     if (ok_sizes_w && ok_sizes_h) {
+		namespace bg = boost::gil;
+		bg::rgb8_image_t img;
+		bg::read_image(ifs, img, bg::jpeg_tag{});
+		bg::rgb8_image_t square(width, height);
+		bg::resize_view(
+		   bg::const_view(img),
+		   bg::view(square),
+		   bg::bilinear_sampler{});
+
+		std::ostringstream oss;
+		bg::write_view(oss, bg::const_view(square), bg::jpeg_tag{});
+		body = oss.str();
+	     } else {
+		response_.result(http::status::bad_request);
+		response_.set(http::field::content_type, mime_type(".txt"));
+		response_.body() = "Invalid size.\r\n";
+		response_.set(http::field::content_length,
+			    beast::to_static_string(std::size(response_.body())));
+		write_response();
+	        return;
+	     }
+	  } else {
+	     // TODO: Set error in the response.
+	     response_.result(http::status::bad_request);
+	     response_.set(http::field::content_type, mime_type(".txt"));
+	     response_.body() = "Invalid query.\r\n";
+	     response_.set(http::field::content_length,
+			 beast::to_static_string(std::size(response_.body())));
+	     write_response();
+	     return;
+	  }
       } else {
 	 using iter_type = std::istreambuf_iterator<char>;
 	 body = std::string {iter_type {ifs}, {}};
@@ -267,16 +293,13 @@ private:
       if (gzip)
         response_.set(http::field::content_encoding, "gzip");
 
-      if (cfg_.set_cache_control())
+      if (cfg_.set_cache_control()) {
         response_.set(
            http::field::cache_control,
            cfg_.get_cache_control(path));
+      }
 
-      auto self = derived().shared_from_this();
-      auto f = [self](auto ec, auto)
-	 { self->derived().do_eof(); };
-
-      http::async_write(derived().stream(), response_, f);
+      write_response();
    }
 
    void set_redirect(beast::string_view target)
