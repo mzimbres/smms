@@ -15,18 +15,17 @@ SMMS makes direct use of only three boost packages
   1. Asio
   2. Beast
   3. Program Options
-  3. GIL
+  3. GIL (with libjpeg)
 
 There is no need to build boost whole, for example
 
-   $ ./bootstrap.sh --with-libraries=program_options,system --prefix=/opt/boost_1_71_0/
+   $ ./bootstrap.sh --with-libraries=program_options,system,filesystem --prefix=/opt/boost_1_76_0/
    $ ./b2
-   $ sudo b2 install
+   $ sudo ./b2 install
 
-The Makefile assumes boost is installed on
+Build and install
 
-   boost_inc_dir = /opt/boost_1_71_0/include
-   boost_lib_dir = /opt/boost_1_71_0/lib
-
-Change that if needed.
+   $ CPPFLAGS="-std=c++20" && ./configure --with-boost=/opt/boost_1_76_0/include/ --with-boost-libdir=/opt/boost_1_76_0/lib
+   $ make
+   $ sudo make install
 

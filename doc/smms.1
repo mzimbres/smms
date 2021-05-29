@@ -1,0 +1,57 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.\" (C) Copyright 2021 Marcelo Zimbres Silva <mzimbres@gmail.com>,
+.\"
+.\" See http://www.debian.org/doc/manuals/maint-guide/dother.en.html#manpage1
+.\"
+.\" 1. Use this as the template for the manpage for <commandname> after
+.\"    renaming this file to <commandname>.1 (if it is for section 1).
+.\"
+.\" 2. List the path to this file in debian/<packagename>.manpages to
+.\"    install this manpage to the target binary package.
+.\"
+.\" First parameter, SMMS, should be all caps
+.\" Second parameter, SECTION, should be 1-8, maybe w/ subsection
+.\" other parameters are allowed: see man(7), man(1)
+.TH SMMS 1 "29 May 2021"
+.\" Please adjust this date whenever revising the manpage.
+.\"
+.\" Some roff macros, for reference:
+.\" .nh        disable hyphenation
+.\" .hy        enable hyphenation
+.\" .ad l      left justify
+.\" .ad b      justify to both left and right margins
+.\" .nf        disable filling
+.\" .fi        enable filling
+.\" .br        insert line break
+.\" .sp <n>    insert n+1 empty lines
+.\" for manpage-specific macros, see man(7)
+.SH NAME
+smms \- Simple multimedia server.
+.SH SYNOPSIS
+.B smms
+.RI [ options ] " file"
+.SH DESCRIPTION
+.PP
+.\" TeX users may be more comfortable with the \fB<whatever>\fP and
+.\" \fI<whatever>\fP escape sequences to invode bold face and italics,
+.\" respectively.
+\fBsmms\fP simple multimedia server
+.sp 1
+A very simple single-threaded HTTP server to `POST` and `GET` files
+from. Image resizing functionality is also provided.
+.br
+.SH OPTIONS
+.\"These programs follow the usual GNU command line syntax, with long options starting with two dashes (`-').
+Please see the config file.
+
+.SH AUTHOR
+Written by Marcelo Zimbres Silva <mzimbres@gmail.com>.
+
+.SH COPYRIGHT
+Copyright © 2020 Marcelo Zimbres Silva,
+License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+.SH SEE ALSO
+The source code is available at <https://github.com/mzimbres/smms>
