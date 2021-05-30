@@ -196,14 +196,17 @@ make_get_response(
    }
 
    std::string body;
+
    auto const is_jpeg = make_extension(path) == ".jpeg";
    auto const is_jpg = make_extension(path) == ".jpg";
-   auto const query = target_query.second;
-   if ((is_jpeg || is_jpg) && !std::empty(query)) {
-      auto const queries = parse_query({query.data(), std::size(query)});
-      auto const width_str = get_field_value(queries, "width");
-      auto const height_str = get_field_value(queries, "height");
 
+   auto const query = target_query.second;
+   auto const queries = parse_query({query.data(), std::size(query)});
+   auto const width_str = get_field_value(queries, "width");
+   auto const height_str = get_field_value(queries, "height");
+   auto const is_img_query = !std::empty(width_str) && !std::empty(height_str);
+
+   if ((is_jpeg || is_jpg) && is_img_query) {
       auto wec = error_code::ok;
       auto const width = stoi_nothrow(width_str, wec);
 
