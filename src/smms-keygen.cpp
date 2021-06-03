@@ -84,6 +84,8 @@ int main(int argc, char* argv[])
       if (cfg.help)
          return 0;
 
+      init_libsodium();
+
       if (cfg.make_key) {
          pwd_gen gen;
          std::cout << gen(crypto_generichash_KEYBYTES) << std::endl;
@@ -99,7 +101,7 @@ int main(int argc, char* argv[])
       }
 
       if (!std::empty(cfg.make_http_target)) {
-         std::string str = cfg.make_http_target;
+         auto str = cfg.make_http_target;
          if (std::empty(cfg.key)) {
             str += "?hmac=";
             str += make_hex_digest(cfg.make_http_target);
@@ -117,4 +119,3 @@ int main(int argc, char* argv[])
       return 1;
    }
 }
-

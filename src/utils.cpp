@@ -1,3 +1,21 @@
+/* Copyright (c) 2018-2021 Marcelo Zimbres Silva (mzimbres at gmail dot com)
+ *
+ * This file is part of smms.
+ *
+ * smms is free software: you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * smms is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with smms.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 #include "utils.hpp"
 
 #include <algorithm>
@@ -63,20 +81,20 @@ parse_query(std::string const& in)
    return ret;
 }
 
-beast::string_view make_extension(beast::string_view path)
+string_view make_extension(string_view path)
 {
   auto const pos = path.rfind(".");
-  if (pos == beast::string_view::npos)
-     return beast::string_view{};
+  if (pos == string_view::npos)
+     return string_view{};
 
   return path.substr(pos);
 }
 
-std::pair<beast::string_view, beast::string_view>
-split_from_query(beast::string_view path)
+std::pair<string_view, string_view>
+split_from_query(string_view path)
 {
   auto const pos = path.rfind("?");
-  if (pos == beast::string_view::npos) {
+  if (pos == string_view::npos) {
      // The string has no query.
      return {path, {}};
   }
@@ -89,30 +107,6 @@ split_from_query(beast::string_view path)
 
   auto const second = path.substr(pos + 1);
   return {first, second};
-}
-
-
-pathinfo_type make_path_info(beast::string_view target)
-{
-   pathinfo_type pinfo;
-
-   std::array<char, 4> delimiters {{'/', '/', '-', '.'}};
-   auto j = std::ssize(delimiters) - 1;
-   auto k = std::ssize(target);
-   for (auto i = k - 1; i >= 0; --i) {
-      if (target[i] == delimiters[j]) {
-         pinfo[j] = target.substr(i + 1, k - i - 1);
-         k = i;
-         --j;
-      }
-
-      if (j == 0) {
-         pinfo[0] = target.substr(1, k - 1);
-         break;
-      }
-   }
-
-   return pinfo;
 }
 
 std::string parse_dir(std::string const& target)

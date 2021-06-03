@@ -21,8 +21,10 @@
 #include <iostream>
 
 #include "utils.hpp"
+#include "crypto.hpp"
 
 using namespace smms;
+using namespace hmacsha256;
 
 using ret_type = std::vector<std::string>;
 
@@ -132,10 +134,42 @@ void parse_dir_test1()
    check_dir(t7, {"//"}, "t7");
 }
 
+void hmac_test1()
+{
+   auto const key = make_random_key();
+
+   std::string const in = "Marcelo Zimbres Silva";
+   auto const auth = make_auth(in, key);
+   auto const res = verify(auth, in, key);
+   if (res == -1) {
+      std::cout << "Error" << std::endl;
+   } else {
+      std::cout << "Success: hmacsha256" << std::endl;
+   }
+}
+
+void hmac_test2()
+{
+   auto const key = make_random_key();
+
+   std::string const in1 = "Marcelo Zimbres Silva";
+   auto const auth = make_auth(in1, key);
+
+   std::string const in2 = "Louis Zimbres Silva";
+   auto const res = verify(auth, in2, key);
+   if (res == 0) {
+      std::cout << "Error" << std::endl;
+   } else {
+      std::cout << "Success: hmacsha256" << std::endl;
+   }
+}
+
 int main()
 {
    query_test1();
    query_test2();
    query_test3();
    parse_dir_test1();
+   hmac_test1();
+   hmac_test2();
 }

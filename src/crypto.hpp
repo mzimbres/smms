@@ -18,11 +18,11 @@
 
 #pragma once
 
+#include <array>
 #include <string>
 #include <random>
 
-#include "net.hpp"
-#include "utils.hpp"
+#include <sodium.h>
 
 namespace smms
 {
@@ -40,18 +40,31 @@ private:
    std::uniform_int_distribution<int> dist;
 
 public:
-   // sep below is a character that is not part of the character set
-   // used to generate the random strings and can be used as a
-   // separator.
-   static constexpr char sep = '-';
-
    pwd_gen();
    std::string operator()(int size);
 };
 
-// This function tests if the target the digest has been indeed
-// generated using the filename and the secret key shared only by
-// smms db and the smms mms.
-bool is_valid(pathinfo_type const& info, std::string const& key);
+namespace hmacsha256 {
+
+using key_type =
+   std::array<unsigned char, crypto_auth_hmacsha256_KEYBYTES>;
+
+using auth_type =
+   std::array<unsigned char, crypto_auth_hmacsha256_BYTES>;
+
+auth_type
+make_auth(
+   std::string const& in,
+   key_type const& key);
+
+int
+verify(
+   auth_type const& auth,
+   std::string const& in,
+   key_type const& key);
+
+key_type make_random_key();
+
+} // hmacsha256
 
 } // smms

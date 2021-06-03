@@ -21,19 +21,17 @@
 #include <vector>
 #include <string>
 
-#include "net.hpp"
+#include "types.hpp"
 
 namespace smms
 {
-
-using pathinfo_type = std::array<beast::string_view, 4>;
 
 void create_dir(const char *dir);
 
 std::vector<std::string>
 parse_query(std::string const& in);
 
-beast::string_view make_extension(beast::string_view path);
+string_view make_extension(string_view path);
 
 // Splits the url into a target and query. For example
 //
@@ -43,8 +41,7 @@ beast::string_view make_extension(beast::string_view path);
 //
 // First: http://foo.bar/a/b/index.html
 // Second: one=two
-std::pair<beast::string_view, beast::string_view>
-split_from_query(beast::string_view path);
+std::pair<string_view, string_view> split_from_query(string_view path);
 
 /* Parses a http target in the form
  *

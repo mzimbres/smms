@@ -18,22 +18,17 @@
 
 #include "crypto.hpp"
 
-#include <sodium.h>
-
 #include <array>
 #include <string>
-#include <iostream>
-#include <sstream>
+#include <algorithm>
+#include <stdexcept>
 
-#include "utils.hpp"
+#include <sodium.h>
 
 namespace
 {
 
 constexpr char hextable[] = "0123456789abcdef";
-
-// Do not change this character set without taking pwd_gen::sep into
-// consideration.
 constexpr char pwdchars[] = "abcdefghijklmnopqrstuvwxyz0123456789";
 
 //constexpr auto hash_size = crypto_generichash_BYTES;
@@ -117,19 +112,41 @@ void init_libsodium()
       throw std::runtime_error("Error: Cannot initialize libsodium.");
 }
 
-bool is_valid(pathinfo_type const& info, std::string const& key)
+namespace hmacsha256 {
+
+auth_type
+make_auth(std::string const& in, key_type const& key)
 {
-   std::string path = "/";
-   path.append(info[0].data(), std::size(info[0]));
-   path += "/";
-   path.append(info[1].data(), std::size(info[1]));
+   auth_type ret;
 
-   auto const digest = make_hex_digest(path, key);
-   auto const digest_size = std::size(info[2]);
-   if (digest_size != std::size(digest))
-      return false;
+   crypto_auth_hmacsha256(
+      ret.data(),
+      reinterpret_cast<unsigned char const*>(in.data()),
+      std::size(in),
+      key.data());
 
-   return digest.compare(0, digest_size, info[2].data(), digest_size) == 0;
+   return ret;
 }
+
+int verify(auth_type const& auth, std::string const& in, key_type const& key)
+{
+   return
+   crypto_auth_hmacsha256_verify(
+      auth.data(),
+      reinterpret_cast<unsigned char const*>(in.data()),
+      std::size(in),
+      key.data());
+}
+
+key_type make_random_key()
+{
+   key_type key;
+   pwd_gen gen;
+   auto const tmp = gen(std::size(key));
+   std::copy(std::cbegin(tmp), std::cend(tmp), std::begin(key));
+   return key;
+}
+
+} // hmacsha256
 
 } // smms
