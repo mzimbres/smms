@@ -20,7 +20,6 @@
 
 #include <array>
 #include <string>
-#include <random>
 
 #include <sodium.h>
 
@@ -33,16 +32,6 @@ std::string make_hex_digest(std::string const& input);
 std::string
 make_hex_digest( std::string const& input
                , std::string const& key);
-
-class pwd_gen {
-private:
-   std::mt19937 gen;
-   std::uniform_int_distribution<int> dist;
-
-public:
-   pwd_gen();
-   std::string operator()(int size);
-};
 
 namespace hmacsha256 {
 
@@ -64,6 +53,7 @@ verify(
    key_type const& key);
 
 key_type make_random_key();
+std::string make_random_hex_key();
 
 } // hmacsha256
 

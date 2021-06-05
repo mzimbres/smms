@@ -87,8 +87,8 @@ int main(int argc, char* argv[])
       init_libsodium();
 
       if (cfg.make_key) {
-         pwd_gen gen;
-         std::cout << gen(crypto_generichash_KEYBYTES) << std::endl;
+	 auto const hex_key = hmacsha256::make_random_hex_key();
+         std::cout << hex_key << std::endl;
          return 0;
       }
 

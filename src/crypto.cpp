@@ -62,21 +62,6 @@ std::string hash_to_string(hash_type const& hash)
 namespace smms
 {
 
-pwd_gen::pwd_gen()
-: gen {std::random_device{}()}
-, dist {0, sizeof pwdchars - 2}
-{}
-
-std::string pwd_gen::operator()(int pwd_size)
-{
-   std::string pwd;
-   for (auto i = 0; i < pwd_size; ++i) {
-      pwd.push_back(pwdchars[dist(gen)]);
-   }
-
-   return pwd;
-}
-
 std::string make_hex_digest(std::string const& input)
 {
    auto const* p1 = reinterpret_cast<unsigned char const*>(input.data());
@@ -141,12 +126,18 @@ int verify(auth_type const& auth, std::string const& in, key_type const& key)
 key_type make_random_key()
 {
    key_type key;
-   pwd_gen gen;
-   auto const tmp = gen(std::size(key));
-   std::copy(std::cbegin(tmp), std::cend(tmp), std::begin(key));
+   randombytes_buf(key.data(), std::size(key));
    return key;
 }
 
-} // hmacsha256
+// Produces a hmac key and converts it to a hex string.
+std::string make_random_hex_key()
+{
+   auto const key = make_random_key();
+   std::string ret(2 * std::size(key) + 1, 0);
+   sodium_bin2hex(ret.data(), std::size(ret), key.data(), std::size(key));
+   return ret;
+}
 
+} // hmacsha256
 } // smms
