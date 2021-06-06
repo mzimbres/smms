@@ -35,7 +35,7 @@ namespace smms
 struct config {
    bool help = false;
    bool make_key {false};
-   std::string make_digest;
+   std::string make_hmac;
    std::string make_http_target;
    std::string key;
 };
@@ -46,11 +46,10 @@ auto make_cfg(int argc, char* argv[])
 
    po::options_description desc("Options");
    desc.add_options()
-   ("help,h", "Produces help description")
-   ("make-key,k", "Output a randomly generated key to sign urls.")
-   ("make-digest,d", po::value<std::string>(&cfg.make_digest), "Generates the digest for a given http target.")
-   ("make-http-target,t", po::value<std::string>(&cfg.make_http_target), "Generates the http target that can be used to post on the server.")
-   ("key,e", po::value<std::string>(&cfg.key), "The key that should be used to generate the digest.")
+   ("help,h", "Help description")
+   ("make-key,k", "Output a randomly generated key.")
+   ("make-hmac,d", po::value<std::string>(&cfg.make_hmac), "Generates the hmacsha256 for the given input.")
+   ("key,e", po::value<std::string>(&cfg.key), "The key that should be used to generate the hmac.")
    ;
 
    po::positional_options_description pos;
@@ -92,27 +91,43 @@ int main(int argc, char* argv[])
          return 0;
       }
 
-      if (!std::empty(cfg.make_digest)) {
-         if (std::empty(cfg.key))
-            std::cout << make_hex_digest(cfg.make_digest) << std::endl;
-         else
-            std::cout << make_hex_digest(cfg.make_digest, cfg.key) << std::endl;
-         return 0;
-      }
-
-      if (!std::empty(cfg.make_http_target)) {
-         auto str = cfg.make_http_target;
+      if (!std::empty(cfg.make_hmac)) {
          if (std::empty(cfg.key)) {
-            str += "?hmac=";
-            str += make_hex_digest(cfg.make_http_target);
-	 } else {
-            str += "?hmac=";
-            str += make_hex_digest(cfg.make_http_target, cfg.key);
+            std::cerr << "Error: No key provided." << std::endl;
+	    return 1;
 	 }
 
-         std::cout << str << std::endl;
+	 hmacsha256::key_type key;
+
+	 auto const ret =
+	    sodium_hex2bin(
+	       key.data(),
+	       key.size(),
+	       cfg.key.data(),
+	       cfg.key.size(),
+	       nullptr,
+	       nullptr,
+	       nullptr);
+
+	 if (ret == -1) {
+	    std::cerr << "Error: invalid key." << std::endl;
+	    return -1;
+	 }
+
+	 auto const auth = hmacsha256::make_auth(cfg.make_hmac, key);
+	 std::string out(2 * std::size(auth) + 1, 0);
+
+	 sodium_bin2hex(
+	    out.data(),
+	    std::size(out),
+	    auth.data(),
+	    std::size(auth));
+
+	 std::cout << out << std::endl;
          return 0;
       }
+
+      std::cerr << "No input specified." << std::endl;
 
    } catch(std::exception const& e) {
       std::cerr << e.what() << std::endl;

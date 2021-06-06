@@ -27,11 +27,6 @@ namespace smms
 {
 
 void init_libsodium();
-std::string make_hex_digest(std::string const& input);
-
-std::string
-make_hex_digest( std::string const& input
-               , std::string const& key);
 
 namespace hmacsha256 {
 

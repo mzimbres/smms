@@ -70,30 +70,58 @@ make_post_response(
    auto const query = target_query.second;
    auto const queries = parse_query({query.data(), std::size(query)});
    
-   auto const expected_hmac = get_field_value(queries, "hmac");
-   auto const digest =
-      make_hex_digest({target.data(), std::size(target)}, cfg.key);
+   auto const expected_hex_auth = get_field_value(queries, "hmac");
+
+   if (expected_hex_auth.empty()) {
+      response.result(http::status::bad_request);
+      response.set(http::field::content_type, "text/plain");
+      response.body() = "hmacsha256 is empty.\r\n";
+      response.set(http::field::content_length,
+		    beast::to_static_string(std::size(response.body())));
+      return response;
+   }
+
+   hmacsha256::auth_type expected_auth = {{0}};
+
+   auto const r =
+      sodium_hex2bin(
+	 expected_auth.data(),
+	 expected_auth.size(),
+	 expected_hex_auth.data(),
+	 expected_hex_auth.size(),
+	 nullptr,
+	 nullptr,
+	 nullptr);
+
+   if (r == -1) {
+      response.result(http::status::bad_request);
+      response.set(http::field::content_type, "text/plain");
+      response.body() = "Invalid hmacsha256.\r\n";
+      response.set(http::field::content_length,
+		    beast::to_static_string(std::size(response.body())));
+      return response;
+   }
+
+   auto const in = std::string{target.data(), std::size(target)};
+   auto const auth = hmacsha256::make_auth(in, cfg.key);
 
    // Before posting we check if the digest and the rest of the
    // target have been produced by the same key.
-   if (!std::empty(digest) && digest == expected_hmac) {
+   if (auth == expected_auth) {
       path = cfg.doc_root;
       path.append(target.data(), std::size(target));
-
-      log::write(log::level::debug , "make_post_response: dir: {0}", path);
 
       std::string full_dir;
       full_dir += cfg.doc_root;
       full_dir += "/";
       full_dir += parse_dir({target.data(), std::size(target)});
 
-      log::write(log::level::debug , "make_post_response: mms dir: {0}", full_dir);
       create_dir(full_dir.data());
    }
 
    log::write(
       log::level::debug,
-      "make_post_response: full dir: {0}",
+      "make_post_response: target: {0}",
       path);
 
    if (std::empty(path)) {

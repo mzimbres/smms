@@ -41,7 +41,7 @@
 namespace smms {
 
 struct server_cfg {
-   bool exit = false;
+   int exit = -1;
    unsigned short http_port;
    unsigned short https_port;
    log::level logfilter;
@@ -72,9 +72,10 @@ namespace po = boost::program_options;
 
 auto make_cfg(int argc, char* argv[])
 {
-   server_cfg cfg;
+   server_cfg cfg {-1};
    std::string conf_file;
    std::string logfilter_str;
+   std::string key;
 
    po::options_description desc("Options");
    desc.add_options()
@@ -93,7 +94,7 @@ auto make_cfg(int argc, char* argv[])
    ("http-port", po::value<unsigned short>(&cfg.http_port)->default_value(80))
    ("https-port", po::value<unsigned short>(&cfg.https_port)->default_value(443))
    ("log-level", po::value<std::string>(&logfilter_str)->default_value("debug"))
-   ("key", po::value<std::string>(&cfg.session_cfg.key))
+   ("key", po::value<std::string>(&key))
    ("allow-origin", po::value<std::string>(&cfg.session_cfg.allow_origin)->default_value("*"))
    ("max-listen-connections", po::value<int>(&cfg.max_listen_connections)->default_value(511))
    ("ssl-certificate-file", po::value<std::string>(&cfg.ssl_cert_file))
@@ -119,19 +120,36 @@ auto make_cfg(int argc, char* argv[])
 
    if (!cfg.has_compatible_cache_control()) {
       log::write(log::level::err, "Incompatible size of local-cache-control-* fields.");
-      return server_cfg {true};
+      return server_cfg {1};
    }
 
    if (vm.count("help")) {
       std::cout << desc << "\n";
-      return server_cfg {true};
+      return server_cfg {0};
+   }
+
+   cfg.session_cfg.key = {{0}};
+
+   auto const ret =
+      sodium_hex2bin(
+	 cfg.session_cfg.key.data(),
+	 cfg.session_cfg.key.size(),
+	 key.data(),
+	 key.size(),
+	 nullptr,
+	 nullptr,
+	 nullptr);
+
+   if (ret == -1) {
+      std::cerr << "Error: invalid key." << std::endl;
+      return server_cfg{1};
    }
 
    cfg.logfilter = log::to_level<log::level>(logfilter_str);
    return cfg;
 }
 
-}
+} // smms
 
 using namespace smms;
 
@@ -139,8 +157,11 @@ int main(int argc, char* argv[])
 {
    try {
       auto const cfg = make_cfg(argc, argv);
-      if (cfg.exit)
+      if (cfg.exit == 0)
          return 0;
+
+      if (cfg.exit == 1)
+         return 1;
 
       init_libsodium();
       log::upto(cfg.logfilter);

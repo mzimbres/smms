@@ -22,6 +22,7 @@
 #include <string>
 
 #include "net.hpp"
+#include "crypto.hpp"
 
 namespace smms {
 
@@ -35,7 +36,7 @@ struct config {
    std::string server_name;
    std::string redirect_url;
    std::string doc_root;
-   std::string key;
+   hmacsha256::key_type key;
    std::string allow_origin;
    std::string default_file;
    std::string default_cache_control;

@@ -24,18 +24,18 @@ To setup the server first generate a key that is known only by the server and th
 
 ```bash
 $ smms-keygen --make-key
-7lym0v3dqa221pz6wru0jad37z1ccclc
+275504e306f0977f8bf9298102d1a62a97bf3faa7cb5c491a0f215b670c494fd
 ```
 
 them generate the HTTP target where you will post the file.
 
 ```bash
-$ smms-keygen --make-http-target /dir1/dir2/dir3/filename.jpg --key 7lym0v3dqa221pz6wru0jad37z1ccclc
-/dir1/dir2/dir3/filename.jpg?hmac=e77adb77dcc6c9fabeb4674816106f7f
+$ smms-keygen --make-hmac /dir1/dir2/dir3/filename.jpg --key 275504e306f0977f8bf9298102d1a62a97bf3faa7cb5c491a0f215b670c494fd
+e70959a5210d8e60685005197e54b556351b5f4a85cef3cedc4ce9ef5f1d0e89
 ```
 
 upload the image. For example
 
 ```bash
-curl -H 'Expect:' -v --data-binary @image.jpg http://host.com/dir1/dir2/dir3/filename.jpg?hmac=e77adb77dcc6c9fabeb4674816106f7f 
+curl -H 'Expect:' -v --data-binary @image.jpg http://host.com/dir1/dir2/dir3/filename.jpg?hmac=e70959a5210d8e60685005197e54b556351b5f4a85cef3cedc4ce9ef5f1d0e89
 ```
